@@ -131,3 +131,8 @@ After both files are marked, the server writes their current buffer contents to
 temporary files and opens Zed's native diff view with the first available Zed
 CLI. The server tries both official Zed and Zed Preview command names/paths on
 macOS, Linux, and Windows. You can override the opener with `ZED_DIFF_TOOL_ZED`.
+
+## License
+
+The extension code is licensed under the Apache License, Version 2.0. See
+[LICENSE](LICENSE).
