@@ -1,0 +1,62 @@
+id = "diff-tool"
+name = "diff-tool"
+description = "Compare two open Zed buffers via a minimal LSP bridge."
+version = "0.0.1"
+schema_version = 1
+authors = ["xgfone"]
+repository = "https://github.com/xgfone/zed-diff-tool"
+
+[language_servers.diff-tool]
+name = "diff-tool"
+languages = [
+  "Plain Text",
+  "Rust",
+  "JavaScript",
+  "TypeScript",
+  "TSX",
+  "JSX",
+  "JSON",
+  "JSONC",
+  "HTML",
+  "CSS",
+  "SCSS",
+  "Markdown",
+  "Python",
+  "Go",
+  "Java",
+  "C",
+  "C++",
+  "C#",
+  "Ruby",
+  "PHP",
+  "Shell Script",
+  "YAML",
+  "TOML",
+  "XML",
+]
+
+[language_servers.diff-tool.language_ids]
+"Plain Text" = "plaintext"
+"Rust" = "rust"
+"JavaScript" = "javascript"
+"TypeScript" = "typescript"
+"TSX" = "typescriptreact"
+"JSX" = "javascriptreact"
+"JSON" = "json"
+"JSONC" = "jsonc"
+"HTML" = "html"
+"CSS" = "css"
+"SCSS" = "scss"
+"Markdown" = "markdown"
+"Python" = "python"
+"Go" = "go"
+"Java" = "java"
+"C" = "c"
+"C++" = "cpp"
+"C#" = "csharp"
+"Ruby" = "ruby"
+"PHP" = "php"
+"Shell Script" = "shellscript"
+"YAML" = "yaml"
+"TOML" = "toml"
+"XML" = "xml"
