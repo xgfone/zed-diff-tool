@@ -131,6 +131,9 @@ After both files are marked, the server writes their current buffer contents to
 temporary files and opens Zed's native diff view with the first available Zed
 CLI. The server tries both official Zed and Zed Preview command names/paths on
 macOS, Linux, and Windows. You can override the opener with `ZED_DIFF_TOOL_ZED`.
+While both marked buffers remain open, later edits to either buffer are written
+back to the same temporary diff input files, allowing the opened diff view to
+refresh from file changes.
 
 ## License
 

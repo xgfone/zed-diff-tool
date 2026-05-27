@@ -29,6 +29,7 @@ struct State {
     docs: HashMap<Uri, Document>,
     first: Option<Document>,
     second: Option<Document>,
+    active_diff: Option<ActiveDiff>,
     marker_path: TempPath,
     temp_dirs: Vec<TempDir>,
 }
@@ -44,6 +45,7 @@ impl State {
             docs: HashMap::new(),
             first: None,
             second: None,
+            active_diff: None,
             marker_path,
             temp_dirs: Vec::new(),
         })
@@ -88,14 +90,16 @@ fn main() -> Result<(), Box<dyn std::error::Error + Sync + Send>> {
                 DidChangeTextDocument::METHOD => {
                     let params: lsp_types::DidChangeTextDocumentParams =
                         serde_json::from_value(notification.params)?;
+                    let uri = params.text_document.uri;
                     if let Some(change) = params.content_changes.into_iter().last() {
                         state.docs.insert(
-                            params.text_document.uri.clone(),
+                            uri.clone(),
                             Document {
-                                uri: params.text_document.uri,
+                                uri: uri.clone(),
                                 text: change.text,
                             },
                         );
+                        refresh_active_diff_for_uri(&state, &uri).ok();
                     }
                 }
                 DidCloseTextDocument::METHOD => {
@@ -222,10 +226,18 @@ fn execute_command(state: &mut State, params: ExecuteCommandParams) -> Result<()
             return Ok(());
         };
         let second = state.second.take().expect("second document was checked");
+        let first = latest_document(state, first);
+        let second = latest_document(state, second);
         let diff_inputs = write_diff_inputs(&first, &second)
             .map_err(|error| format!("failed to write diff inputs: {error}"))?;
         let first_path = diff_inputs.first_path.clone();
         let second_path = diff_inputs.second_path.clone();
+        state.active_diff = Some(ActiveDiff {
+            first_uri: first.uri,
+            second_uri: second.uri,
+            first_path: first_path.clone(),
+            second_path: second_path.clone(),
+        });
         state.temp_dirs.push(diff_inputs.dir);
         open_diff_in_zed(&first_path, &second_path).map_err(|error| {
             format!(
@@ -238,6 +250,10 @@ fn execute_command(state: &mut State, params: ExecuteCommandParams) -> Result<()
     }
 
     Ok(())
+}
+
+fn latest_document(state: &State, document: Document) -> Document {
+    state.docs.get(&document.uri).cloned().unwrap_or(document)
 }
 
 fn save_first_marker(path: &Path, document: &Document) -> io::Result<()> {
@@ -282,6 +298,13 @@ struct DiffInputs {
     second_path: PathBuf,
 }
 
+struct ActiveDiff {
+    first_uri: Uri,
+    second_uri: Uri,
+    first_path: PathBuf,
+    second_path: PathBuf,
+}
+
 fn write_diff_inputs(first: &Document, second: &Document) -> io::Result<DiffInputs> {
     let dir = tempfile::Builder::new()
         .prefix("zed-diff-tool-")
@@ -299,6 +322,27 @@ fn write_diff_inputs(first: &Document, second: &Document) -> io::Result<DiffInpu
         first_path,
         second_path,
     })
+}
+
+fn refresh_active_diff_for_uri(state: &State, changed_uri: &Uri) -> io::Result<()> {
+    let Some(active_diff) = &state.active_diff else {
+        return Ok(());
+    };
+
+    if changed_uri != &active_diff.first_uri && changed_uri != &active_diff.second_uri {
+        return Ok(());
+    }
+
+    let Some(first) = state.docs.get(&active_diff.first_uri) else {
+        return Ok(());
+    };
+    let Some(second) = state.docs.get(&active_diff.second_uri) else {
+        return Ok(());
+    };
+
+    fs::write(&active_diff.first_path, &first.text)?;
+    fs::write(&active_diff.second_path, &second.text)?;
+    Ok(())
 }
 
 fn open_diff_in_zed(first_path: &Path, second_path: &Path) -> io::Result<()> {
