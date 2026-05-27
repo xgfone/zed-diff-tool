@@ -14,7 +14,7 @@ use lsp_types::{
     request::{CodeActionRequest, ExecuteCommand, Shutdown},
 };
 use serde_json::{Value, json};
-use tempfile::TempDir;
+use tempfile::{TempDir, TempPath};
 
 const MARK_FIRST: &str = "diffTool.markFirst";
 const MARK_SECOND: &str = "diffTool.markSecond";
@@ -25,12 +25,33 @@ struct Document {
     text: String,
 }
 
-#[derive(Default)]
 struct State {
     docs: HashMap<Uri, Document>,
     first: Option<Document>,
     second: Option<Document>,
+    marker_path: TempPath,
     temp_dirs: Vec<TempDir>,
+}
+
+impl State {
+    fn new() -> io::Result<Self> {
+        let marker_path = tempfile::Builder::new()
+            .prefix("zed-diff-tool-first-marker-")
+            .suffix(".json")
+            .tempfile()?
+            .into_temp_path();
+        Ok(Self {
+            docs: HashMap::new(),
+            first: None,
+            second: None,
+            marker_path,
+            temp_dirs: Vec::new(),
+        })
+    }
+
+    fn marker_path(&self) -> &Path {
+        self.marker_path.as_ref()
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error + Sync + Send>> {
@@ -49,7 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Sync + Send>> {
     };
     connection.initialize_finish(initialize_id, json!({ "capabilities": capabilities }))?;
 
-    let mut state = State::default();
+    let mut state = State::new()?;
     for message in &connection.receiver {
         match message {
             Message::Notification(notification) => match notification.method.as_str() {
@@ -180,7 +201,7 @@ fn execute_command(state: &mut State, params: ExecuteCommandParams) -> Result<()
 
     let marked_second = match params.command.as_str() {
         MARK_FIRST => {
-            save_first_marker(&document)
+            save_first_marker(state.marker_path(), &document)
                 .map_err(|error| format!("failed to save first marker: {error}"))?;
             state.first = Some(document);
             false
@@ -196,7 +217,7 @@ fn execute_command(state: &mut State, params: ExecuteCommandParams) -> Result<()
         let first = state
             .first
             .take()
-            .or_else(|| load_first_marker().ok().flatten());
+            .or_else(|| load_first_marker(state.marker_path()).ok().flatten());
         let Some(first) = first else {
             return Ok(());
         };
@@ -213,26 +234,21 @@ fn execute_command(state: &mut State, params: ExecuteCommandParams) -> Result<()
                 second_path.display()
             )
         })?;
-        remove_first_marker().ok();
+        remove_first_marker(state.marker_path()).ok();
     }
 
     Ok(())
 }
 
-fn marker_path() -> PathBuf {
-    std::env::temp_dir().join("zed-diff-tool-first.json")
-}
-
-fn save_first_marker(document: &Document) -> io::Result<()> {
+fn save_first_marker(path: &Path, document: &Document) -> io::Result<()> {
     let marker = json!({
         "uri": document.uri.as_str(),
         "text": document.text,
     });
-    fs::write(marker_path(), marker.to_string())
+    fs::write(path, marker.to_string())
 }
 
-fn load_first_marker() -> io::Result<Option<Document>> {
-    let path = marker_path();
+fn load_first_marker(path: &Path) -> io::Result<Option<Document>> {
     let marker = match fs::read_to_string(path) {
         Ok(marker) => marker,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
@@ -252,8 +268,8 @@ fn load_first_marker() -> io::Result<Option<Document>> {
     }))
 }
 
-fn remove_first_marker() -> io::Result<()> {
-    match fs::remove_file(marker_path()) {
+fn remove_first_marker(path: &Path) -> io::Result<()> {
+    match fs::remove_file(path) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(error),
