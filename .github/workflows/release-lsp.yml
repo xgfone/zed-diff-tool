@@ -50,7 +50,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build LSP
-        run: cargo build --release --target "${{ matrix.target }}" --manifest-path zed-diff-tool/server/Cargo.toml
+        run: cargo build --release --target "${{ matrix.target }}" --manifest-path server/Cargo.toml
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
@@ -58,7 +58,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp "zed-diff-tool/server/target/${{ matrix.target }}/release/${{ matrix.binary }}" dist/
+          cp "server/target/${{ matrix.target }}/release/${{ matrix.binary }}" dist/
           cd dist
           7z a "../${{ matrix.asset }}" "${{ matrix.binary }}"
 
