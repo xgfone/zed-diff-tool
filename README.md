@@ -26,21 +26,55 @@ If `wasm32-wasip2` is not installed:
 rustup target add wasm32-wasip2
 ```
 
-## Install for development
+## Local Development
 
-Open Zed, run `zed: extensions`, choose `Install Dev Extension`, and select the
-`zed-diff-tool` directory.
-
-Alternatively, build and install the extension into the local Zed extension
-directory in one step:
+For local development, this repository includes helper scripts that build the
+extension and copy only the extension manifest and wasm into the local Zed data
+directory:
 
 ```sh
 scripts/install-dev.sh
 ```
 
-The script installs `extension.toml` and `extension.wasm` into
-`extensions/installed/diff-tool`, and installs the local `diff-tool-lsp` binary
-into `extensions/work/diff-tool/servers/local`. Restart Zed after running it.
+For Zed Preview on macOS, pass the data directory explicitly:
+
+```sh
+scripts/install-dev.sh --data-dir "$HOME/Library/Application Support/Zed Preview"
+```
+
+The script builds these local development artifacts:
+
+- the Zed extension wasm
+- the native `diff-tool-lsp` server
+
+It installs only the extension files into:
+
+```text
+<Zed data dir>/extensions/installed/diff-tool
+```
+
+The local LSP server is not bundled into the extension. Point Zed at the locally
+built server with `lsp.diff-tool.binary.path`:
+
+```json
+{
+    "lsp": {
+        "diff-tool": {
+            "binary": {
+                "path": "/absolute/path/to/diff-tool-lsp"
+            }
+        }
+    }
+}
+```
+
+Alternatively, set `ZED_DIFF_TOOL_LSP` to the server path before launching Zed.
+
+These scripts are for local development only. Published builds download the
+platform-specific LSP server from GitHub Releases or use a user-provided server
+path.
+
+Restart Zed after installing or changing the local server configuration.
 
 To remove the local development install:
 
@@ -59,8 +93,7 @@ For development, the extension finds the LSP in this order:
 1. Zed `lsp.diff-tool.binary.path` setting
 2. `ZED_DIFF_TOOL_LSP`
 3. `diff-tool-lsp` on `PATH`
-4. bundled local binary installed by `scripts/install-dev.sh`
-5. downloaded release asset cache
+4. A platform-specific binary downloaded from the latest GitHub Release.
 
 For arbitrary projects, the most predictable setup is:
 
@@ -113,12 +146,12 @@ file with `zed: open keymap file` and add a binding such as:
 
 ```json
 [
-  {
-    "context": "Editor && mode == full",
-    "bindings": {
-      "secondary-shift-d": "editor::ToggleCodeActions"
+    {
+        "context": "Editor && mode == full",
+        "bindings": {
+            "secondary-shift-d": "editor::ToggleCodeActions"
+        }
     }
-  }
 ]
 ```
 

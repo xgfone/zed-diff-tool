@@ -5,7 +5,7 @@ usage() {
   cat <<'USAGE'
 Usage: scripts/uninstall-dev.sh [OPTIONS]
 
-Remove the locally installed diff-tool extension from the Zed data directory.
+Remove the locally installed diff-tool development extension from the Zed data directory.
 
 Options:
   --data-dir DIR    Override the Zed data directory.
@@ -69,10 +69,9 @@ if [ -z "$data_dir" ]; then
 fi
 
 install_dir="$data_dir/extensions/installed/diff-tool"
-work_dir="$data_dir/extensions/work/diff-tool"
 
 removed=0
-for path in "$install_dir" "$work_dir"; do
+for path in "$install_dir"; do
   if [ -e "$path" ]; then
     rm -rf "$path"
     echo "Removed: $path"

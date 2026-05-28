@@ -24,10 +24,6 @@ impl DiffToolExtension {
             return Ok(path);
         }
 
-        if let Some(path) = local_bundled_server_path() {
-            return Ok(path);
-        }
-
         if let Some(path) = &self.cached_server_path {
             if fs::metadata(path).is_ok_and(|metadata| metadata.is_file()) {
                 return Ok(path.clone());
@@ -152,18 +148,6 @@ fn configured_server_path(worktree: &zed::Worktree) -> Option<String> {
         .find_map(|(key, value)| (key == "ZED_DIFF_TOOL_LSP").then_some(value))
 }
 
-fn local_bundled_server_path() -> Option<String> {
-    let binary_name = if matches!(zed::current_platform().0, zed::Os::Windows) {
-        format!("{SERVER_NAME}.exe")
-    } else {
-        SERVER_NAME.to_string()
-    };
-    let path = format!("servers/local/{binary_name}");
-    fs::metadata(&path)
-        .is_ok_and(|metadata| metadata.is_file())
-        .then_some(path)
-}
-
 fn release_asset() -> (String, String) {
     let binary_name = if matches!(zed::current_platform().0, zed::Os::Windows) {
         format!("{SERVER_NAME}.exe")
@@ -212,9 +196,7 @@ fn cleanup_old_versions(current_version_dir: &str) {
     if let Ok(entries) = fs::read_dir("servers") {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.to_string_lossy() != current_version_dir
-                && path.file_name().is_some_and(|name| name != "local")
-            {
+            if path.to_string_lossy() != current_version_dir {
                 fs::remove_dir_all(path).ok();
             }
         }

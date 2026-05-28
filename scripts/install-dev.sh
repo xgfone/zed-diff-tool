@@ -5,7 +5,10 @@ usage() {
   cat <<'USAGE'
 Usage: scripts/install-dev.sh [OPTIONS]
 
-Build and install this extension into the local Zed extensions directory.
+Build local development artifacts and install only the extension manifest and
+wasm into the local Zed extensions directory. The LSP server is built but not
+bundled into the extension; configure its path with Zed settings or
+ZED_DIFF_TOOL_LSP for local development.
 
 Options:
   --no-build        Do not run cargo build before installing.
@@ -113,21 +116,24 @@ if [ ! -f "$server_path" ]; then
 fi
 
 install_dir="$data_dir/extensions/installed/diff-tool"
-work_dir="$data_dir/extensions/work/diff-tool"
 rm -rf "$install_dir"
-mkdir -p "$install_dir" "$work_dir/servers/local"
+mkdir -p "$install_dir"
 
 cp "$repo_dir/extension.toml" "$install_dir/extension.toml"
 cp "$wasm_path" "$install_dir/extension.wasm"
-cp "$server_path" "$work_dir/servers/local/$server_binary"
-chmod +x "$work_dir/servers/local/$server_binary" 2>/dev/null || true
 
 cat <<EOF
 Installed diff-tool into:
   $install_dir
 
-Installed local LSP into:
-  $work_dir/servers/local/$server_binary
+Built local LSP at:
+  $server_path
+
+For local development, configure:
+  "lsp": { "diff-tool": { "binary": { "path": "$server_path" } } }
+
+Or export:
+  ZED_DIFF_TOOL_LSP="$server_path"
 
 Restart Zed to reload the local extension.
 EOF
